@@ -1,24 +1,44 @@
 import * as assert from 'assert';
 import * as mongoose from 'mongoose';
-import { Schema } from 'mongoose';
+import { Document, Schema } from 'mongoose';
 
-const schema = new Schema({
-  name: String,
-});
-
-schema.plugin(require('../src/index'));
+const finderEnhancer = require('../src/index');
 
 const connection = mongoose.createConnection('mongodb://localhost/test');
-const User = connection.model('user', schema);
+
+const userSchema = new Schema({
+  name: String,
+});
+userSchema.plugin(finderEnhancer);
+interface IUserDocument extends Document {
+  name: string;
+}
+const User = connection.model<IUserDocument>('user', userSchema);
+
+const walletSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: () => User },
+});
+walletSchema.plugin(finderEnhancer);
+interface IWalletDocument extends Document {
+  user: IUserDocument;
+}
+const Wallet = connection.model<IWalletDocument>('wallet', walletSchema);
 
 describe('mongoose-finder-enhancer', () => {
   it('should ok', async () => {
-    await User.create({ name: 'Misery' });
+    await connection.dropDatabase();
+    const newUser = await User.create({ name: 'Misery' });
+    await Wallet.create({ user: newUser._id });
     const user = await User.findOne();
-    if (user) {
-      assert(Object.keys(user.toJSON()).length === 1);
-      await user.remove();
+    if (!user) {
+      throw new Error('user not exists.');
     }
+    assert(Object.keys(user.toJSON()).length === 1);
+    const walletWithUser = await Wallet.findOne().select('user');
+    if (!walletWithUser) {
+      throw new Error('wallet not exists.');
+    }
+    assert(walletWithUser.user instanceof User);
   });
 });
 

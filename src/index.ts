@@ -12,7 +12,6 @@ interface IQuery extends Query<Document> {
 
 export = (schema: Schema) => {
   const callback = function(this: IQuery, next: () => void) {
-    console.log('Hint', typeof this);
     if (this.options.disableEnhancer) {
       next();
       return;
