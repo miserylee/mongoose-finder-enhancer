@@ -10,18 +10,22 @@ const userSchema = new Schema({
   name: String,
 });
 userSchema.plugin(finderEnhancer);
+
 interface IUserDocument extends Document {
   name: string;
 }
+
 const User = connection.model<IUserDocument>('user', userSchema);
 
 const walletSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: () => User },
 });
 walletSchema.plugin(finderEnhancer);
+
 interface IWalletDocument extends Document {
   user: IUserDocument;
 }
+
 const Wallet = connection.model<IWalletDocument>('wallet', walletSchema);
 
 describe('mongoose-finder-enhancer', () => {
@@ -34,11 +38,15 @@ describe('mongoose-finder-enhancer', () => {
       throw new Error('user not exists.');
     }
     assert(Object.keys(user.toJSON()).length === 1);
-    const walletWithUser = await Wallet.findOne().select('user');
+    const walletWithUser = await Wallet.findOne().select({
+      user: 'name',
+    });
     if (!walletWithUser) {
       throw new Error('wallet not exists.');
     }
+    console.log(walletWithUser);
     assert(walletWithUser.user instanceof User);
+    assert(walletWithUser.user.name === 'Misery');
   });
 });
 
